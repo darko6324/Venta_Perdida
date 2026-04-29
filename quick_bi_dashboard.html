@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quick.com.co — BI Venta Perdida</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root {
+  --bg: #0b0c10;
+  --surface: #13141a;
+  --surface2: #1a1b23;
+  --surface3: #21222d;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.11);
+  --text: #edeae4;
+  --text-muted: #7e7b74;
+  --text-dim: #3e3d3a;
+  --red: #e8453c;
+  --red-soft: rgba(232,69,60,0.13);
+  --orange: #f07830;
+  --orange-soft: rgba(240,120,48,0.13);
+  --blue: #4191ff;
+  --blue-soft: rgba(65,145,255,0.12);
+  --green: #2dca7e;
+  --green-soft: rgba(45,202,126,0.12);
+  --amber: #f5be42;
+  --amber-soft: rgba(245,190,66,0.12);
+  --purple: #9b72f5;
+  --purple-soft: rgba(155,114,245,0.12);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --font-d: 'Syne', sans-serif;
+  --font-b: 'DM Sans', sans-serif;
+  --font-m: 'DM Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:14px;line-height:1.5;min-height:100vh;}
+
+/* LOADER */
+#loader{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.5s;}
+#loader.hidden{opacity:0;pointer-events:none;}
+.loader-logo{font-family:var(--font-d);font-size:28px;font-weight:800;color:var(--text);margin-bottom:12px;}
+.loader-logo span{color:var(--red);}
+.loader-bar{width:200px;height:2px;background:var(--surface2);border-radius:1px;overflow:hidden;margin-bottom:10px;}
+.loader-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--orange));width:0%;transition:width 0.3s;}
+.loader-text{font-family:var(--font-m);font-size:11px;color:var(--text-muted);}
+
+/* HEADER */
+.header{padding:28px 36px 22px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;background:var(--bg);z-index:100;backdrop-filter:blur(8px);}
+.header-brand{display:flex;align-items:center;gap:14px;}
+.brand-mark{width:36px;height:36px;border-radius:8px;background:var(--red);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:14px;font-weight:800;color:#fff;flex-shrink:0;}
+.brand-name{font-family:var(--font-d);font-size:16px;font-weight:700;color:var(--text);}
+.brand-sub{font-family:var(--font-m);font-size:10px;color:var(--text-muted);margin-top:1px;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.last-update{font-family:var(--font-m);font-size:10px;color:var(--text-dim);}
+.refresh-btn{font-family:var(--font-m);font-size:10px;color:var(--text-muted);background:var(--surface);border:0.5px solid var(--border2);padding:6px 12px;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.15s;letter-spacing:0.05em;}
+.refresh-btn:hover{color:var(--text);border-color:var(--border2);background:var(--surface2);}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0;}
+
+/* FILTERS */
+.filters-bar{padding:16px 36px;border-bottom:0.5px solid var(--border);background:var(--surface);display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+.filter-group{display:flex;flex-direction:column;gap:4px;}
+.filter-label{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);}
+select{background:var(--surface2);color:var(--text);border:0.5px solid var(--border2);border-radius:var(--radius-sm);padding:7px 28px 7px 10px;font-size:12px;font-family:var(--font-b);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237e7b74' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;min-width:160px;transition:border-color 0.15s;}
+select:hover{border-color:var(--border2);}
+select:focus{outline:none;border-color:var(--blue);}
+.filter-reset{font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:7px 10px;font-family:var(--font-b);transition:color 0.15s;align-self:flex-end;}
+.filter-reset:hover{color:var(--text);}
+.filter-info{margin-left:auto;font-family:var(--font-m);font-size:11px;color:var(--text-dim);align-self:flex-end;}
+
+/* MAIN */
+.main{padding:28px 36px;max-width:1400px;margin:0 auto;}
+.section-label{font-family:var(--font-d);font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.section-label::after{content:'';flex:1;height:0.5px;background:var(--border);}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:28px;}
+.kpi{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:16px 16px 14px;position:relative;overflow:hidden;cursor:default;transition:border-color 0.2s;}
+.kpi:hover{border-color:var(--border2);}
+.kpi-accent{position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi-lbl{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px;}
+.kpi-val{font-family:var(--font-d);font-size:20px;font-weight:700;line-height:1;margin-bottom:4px;}
+.kpi-chg{font-family:var(--font-m);font-size:10px;color:var(--text-dim);}
+.c-red{color:var(--red);} .c-green{color:var(--green);} .c-blue{color:var(--blue);} .c-orange{color:var(--orange);} .c-amber{color:var(--amber);} .c-purple{color:var(--purple);}
+
+/* CHART GRID */
+.chart-grid{display:grid;gap:14px;margin-bottom:28px;}
+.g-2{grid-template-columns:1fr 1fr;}
+.g-3{grid-template-columns:2fr 1fr 1fr;}
+.g-1{grid-template-columns:1fr;}
+.chart-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:20px;}
+.cc-head{margin-bottom:14px;}
+.cc-title{font-family:var(--font-d);font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.cc-sub{font-family:var(--font-m);font-size:10px;color:var(--text-muted);}
+.canvas-wrap{position:relative;width:100%;}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+/* HORIZONTAL BARS */
+.hbar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.hbar-lbl{font-size:11px;color:var(--text-muted);width:96px;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-m);}
+.hbar-track{flex:1;height:11px;background:var(--surface2);border-radius:2px;overflow:hidden;}
+.hbar-fill{height:100%;border-radius:2px;transition:width 0.8s cubic-bezier(0.16,1,0.3,1);}
+.hbar-val{font-size:10px;color:var(--text);width:56px;font-family:var(--font-m);flex-shrink:0;}
+
+/* BADGE */
+.badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:2px 8px;border-radius:3px;}
+.badge-red{background:var(--red-soft);color:var(--red);border:0.5px solid rgba(232,69,60,0.25);}
+.badge-orange{background:var(--orange-soft);color:var(--orange);border:0.5px solid rgba(240,120,48,0.25);}
+.badge-green{background:var(--green-soft);color:var(--green);border:0.5px solid rgba(45,202,126,0.25);}
+.badge-blue{background:var(--blue-soft);color:var(--blue);border:0.5px solid rgba(65,145,255,0.25);}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead th{font-family:var(--font-m);font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);padding:10px 14px;text-align:left;border-bottom:0.5px solid var(--border);background:var(--surface);white-space:nowrap;}
+thead th:not(:first-child){text-align:right;}
+tbody td{font-size:12px;color:var(--text-muted);padding:9px 14px;border-bottom:0.5px solid var(--border);font-family:var(--font-m);}
+tbody td:first-child{color:var(--text);font-family:var(--font-b);font-size:13px;}
+tbody td:not(:first-child){text-align:right;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:var(--surface2);}
+.td-red{color:var(--red)!important;} .td-green{color:var(--green)!important;} .td-orange{color:var(--orange)!important;} .td-blue{color:var(--blue)!important;}
+
+/* FINDINGS */
+.findings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px;}
+.finding{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:18px 20px;display:flex;gap:14px;transition:border-color 0.2s;}
+.finding:hover{border-color:var(--border2);}
+.finding-n{font-family:var(--font-d);font-size:36px;font-weight:800;color:var(--text-dim);line-height:1;flex-shrink:0;width:38px;}
+.finding-body{}
+.finding-title{font-family:var(--font-d);font-size:13px;font-weight:600;color:var(--text);margin-bottom:5px;}
+.finding-text{font-size:12px;color:var(--text-muted);line-height:1.6;}
+.finding-text strong{color:var(--text);font-weight:500;}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:40px;color:var(--text-dim);font-family:var(--font-m);font-size:12px;}
+
+@media(max-width:900px){
+  .header,.filters-bar,.main{padding-left:20px;padding-right:20px;}
+  .g-2,.g-3{grid-template-columns:1fr;}
+  .findings-grid{grid-template-columns:1fr;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:500px){
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .header{flex-direction:column;align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-logo">Quick<span>.</span>BI</div>
+  <div class="loader-bar"><div class="loader-fill" id="loaderFill"></div></div>
+  <div class="loader-text" id="loaderText">Conectando con Google Sheets…</div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-brand">
+    <div class="brand-mark">Q</div>
+    <div>
+      <div class="brand-name">Quick.com.co · BI Venta Perdida</div>
+      <div class="brand-sub">Modelo híbrido Help + Go — Datos en vivo</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot" id="statusDot"></div>
+    <div class="last-update" id="lastUpdate">–</div>
+    <button class="refresh-btn" onclick="loadData()">↻ Actualizar</button>
+  </div>
+</header>
+
+<!-- FILTERS -->
+<div class="filters-bar">
+  <div class="filter-group">
+    <div class="filter-label">Proyecto</div>
+    <select id="fProyecto" onchange="applyFilters()"><option value="">Todos los proyectos</option></select>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">Mes</div>
+    <select id="fMes" onchange="applyFilters()"><option value="">Todos los meses</option></select>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">Ciudad</div>
+    <select id="fCiudad" onchange="applyFilters()"><option value="">Todas las ciudades</option></select>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">Tipo</div>
+    <select id="fTipo" onchange="applyFilters()"><option value="">Todos los tipos</option></select>
+  </div>
+  <button class="filter-reset" onclick="resetFilters()">Limpiar filtros</button>
+  <div class="filter-info" id="filterInfo">–</div>
+</div>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- KPIs -->
+  <div class="section-label">Indicadores clave</div>
+  <div class="kpi-grid" id="kpiGrid">
+    <div class="empty">Cargando…</div>
+  </div>
+
+  <!-- Monthly + Donuts -->
+  <div class="section-label">Evolución mensual y distribución de margen</div>
+  <div class="chart-grid g-3" style="margin-bottom:14px;">
+    <div class="chart-card">
+      <div class="cc-head">
+        <div class="cc-title">Margen perdido por mes (Cancelados)</div>
+        <div class="cc-sub" id="monthSub">–</div>
+      </div>
+      <div class="canvas-wrap" style="height:220px;"><canvas id="monthChart" role="img" aria-label="Margen perdido mensual">–</canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-head">
+        <div class="cc-title">Distribución margen exitosos</div>
+        <div class="cc-sub">Help vs Go</div>
+      </div>
+      <div class="legend">
+        <div class="leg-item"><span class="leg-dot" style="background:var(--blue);"></span>Help</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--green);"></span>Go</div>
+      </div>
+      <div class="canvas-wrap" style="height:170px;"><canvas id="donutExito" role="img" aria-label="Donut exitosos Help vs Go">–</canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-head">
+        <div class="cc-title">Distribución margen perdido</div>
+        <div class="cc-sub">Quién absorbe el daño</div>
+      </div>
+      <div class="legend">
+        <div class="leg-item"><span class="leg-dot" style="background:var(--red);"></span>Help</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--orange);"></span>Go</div>
+      </div>
+      <div class="canvas-wrap" style="height:170px;"><canvas id="donutPerdido" role="img" aria-label="Donut perdido Help vs Go">–</canvas></div>
+    </div>
+  </div>
+
+  <!-- Proyecto + Tipo -->
+  <div class="chart-grid g-2" style="margin-bottom:14px;">
+    <div class="chart-card">
+      <div class="cc-head">
+        <div class="cc-title">Margen perdido por proyecto</div>
+        <div class="cc-sub">Solo cancelaciones</div>
+      </div>
+      <div class="canvas-wrap" style="height:240px;"><canvas id="proyChart" role="img" aria-label="Margen perdido por proyecto">–</canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-head">
+        <div class="cc-title">Cancelaciones por tipo de servicio</div>
+        <div class="cc-sub">Carry vs Domicilio vs Moto</div>
+      </div>
+      <div class="canvas-wrap" style="height:240px;"><canvas id="tipoChart" role="img" aria-label="Cancelaciones por tipo">–</canvas></div>
+    </div>
+  </div>
+
+  <!-- Ciudad barras + Rentabilidad modelo -->
+  <div class="chart-grid g-2" style="margin-bottom:14px;">
+    <div class="chart-card">
+      <div class="cc-head">
+        <div class="cc-title">Top ciudades — margen perdido</div>
+        <div class="cc-sub">Cancelaciones acumuladas</div>
+      </div>
+      <div id="ciudadBars" style="margin-top:4px;"></div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-head">
+        <div class="cc-title">Rentabilidad promedio por proyecto (exitosos)</div>
+        <div class="cc-sub">Margen Help + Go por servicio</div>
+      </div>
+      <div class="canvas-wrap" style="height:240px;"><canvas id="rentChart" role="img" aria-label="Rentabilidad promedio por proyecto">–</canvas></div>
+    </div>
+  </div>
+
+  <!-- Correlación costo Quicker -->
+  <div class="chart-grid g-2" style="margin-bottom:14px;">
+    <div class="chart-card">
+      <div class="cc-head">
+        <div class="cc-title">Costo Quicker vs tasa de cancelación</div>
+        <div class="cc-sub">Correlación por rango de pago al conductor</div>
+      </div>
+      <div class="canvas-wrap" style="height:200px;"><canvas id="corrChart" role="img" aria-label="Correlación costo Quicker y cancelación">–</canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-head">
+        <div class="cc-title">Servicios por estado</div>
+        <div class="cc-sub">Proporción del total filtrado</div>
+      </div>
+      <div class="canvas-wrap" style="height:200px;"><canvas id="estadoChart" role="img" aria-label="Servicios por estado">–</canvas></div>
+    </div>
+  </div>
+
+  <!-- Transfer pricing: proyectos RENT_HELP = 0 -->
+  <div class="chart-grid g-1" style="margin-bottom:14px;">
+    <div class="chart-card">
+      <div class="cc-head">
+        <div class="cc-title">Análisis Transfer Pricing — Rent Help por proyecto</div>
+        <div class="cc-sub">Margen promedio que retiene Quick Help por servicio exitoso (amarillo = $0 = todo va a Go)</div>
+      </div>
+      <div class="canvas-wrap" style="height:200px;"><canvas id="tpChart" role="img" aria-label="Transfer pricing Help">–</canvas></div>
+    </div>
+  </div>
+
+  <!-- Tabla por proyecto -->
+  <div class="section-label">Tabla comparativa por proyecto</div>
+  <div class="chart-card" style="margin-bottom:28px;">
+    <div class="table-wrap">
+      <table id="proyTable">
+        <thead>
+          <tr>
+            <th>Proyecto</th>
+            <th>Total servicios</th>
+            <th>Cancelados</th>
+            <th>% cancelación</th>
+            <th>Margen perdido</th>
+            <th>Pérd. Help</th>
+            <th>Pérd. Go</th>
+            <th>Rent. Help prom. (exitosos)</th>
+            <th>Rent. Go prom. (exitosos)</th>
+          </tr>
+        </thead>
+        <tbody id="proyTableBody"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tabla por ciudad -->
+  <div class="section-label">Tabla comparativa por ciudad</div>
+  <div class="chart-card" style="margin-bottom:28px;">
+    <div class="table-wrap">
+      <table id="ciudadTable">
+        <thead>
+          <tr>
+            <th>Ciudad</th>
+            <th>Total servicios</th>
+            <th>Cancelados</th>
+            <th>% cancelación</th>
+            <th>Margen perdido</th>
+            <th>Pérd. Help</th>
+            <th>Pérd. Go</th>
+          </tr>
+        </thead>
+        <tbody id="ciudadTableBody"><tr><td colspan="7" class="empty">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Hallazgos dinámicos -->
+  <div class="section-label">Hallazgos críticos (calculados en vivo)</div>
+  <div class="findings-grid" id="findingsGrid">
+    <div class="finding"><div class="finding-n">–</div><div class="finding-body"><div class="finding-title">Cargando…</div></div></div>
+  </div>
+
+</main>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTYYoBBdK7BeA04wiOfsfgojCIzgmF3961sZ5uhqllr9pdctCJp3y22BRmVNPVzMT4yEr68Qm8pLxzk/pub?output=csv';
+const MES_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let rawData = [];
+let filteredData = [];
+let charts = {};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const fmt = (n) => n == null || isNaN(n) ? '–' : '$' + Math.round(n).toLocaleString('es-CO');
+const fmtK = (n) => n == null || isNaN(n) ? '–' : '$' + (Math.round(n/1000)).toLocaleString('es-CO') + 'K';
+const fmtM = (n) => n == null || isNaN(n) ? '–' : '$' + (n/1e6).toFixed(2) + 'M';
+const pct = (a,b) => b===0 ? '0%' : (a/b*100).toFixed(1) + '%';
+const num = (s) => { if(s==null||s===''||s===undefined) return null; const v=parseFloat(String(s).replace(/[^0-9.\-]/g,'')); return isNaN(v)?null:v; };
+const isCancelado = (r) => r.estado === 'Cancelado';
+const isExitoso = (r) => r.estado === 'Finalizado';
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+const GRID = '#ffffff0a';
+const TICK = '#7e7b74';
+const commonScales = (yFmt) => ({
+  x: { grid:{color:GRID}, ticks:{color:TICK,font:{size:11,family:'DM Mono'}} },
+  y: { grid:{color:GRID}, ticks:{color:TICK,font:{size:11,family:'DM Mono'},callback:yFmt} }
+});
+
+// ─── LOAD DATA ────────────────────────────────────────────────────────────────
+async function loadData() {
+  setLoader(true, 'Conectando con Google Sheets…', 10);
+  try {
+    const resp = await fetch(CSV_URL);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const text = await resp.text();
+    setLoader(true, 'Procesando filas…', 50);
+    parseCSV(text);
+    setLoader(true, 'Renderizando gráficos…', 80);
+    await new Promise(r => setTimeout(r, 100));
+    populateFilters();
+    applyFilters();
+    document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-CO');
+    setLoader(false, '', 100);
+  } catch(e) {
+    setLoader(false,'',100);
+    document.getElementById('lastUpdate').textContent = 'Error al cargar datos';
+    document.getElementById('statusDot').style.background = 'var(--red)';
+    document.getElementById('statusDot').style.boxShadow = '0 0 6px var(--red)';
+    alert('No se pudieron cargar los datos. Verifica tu conexión o que el sheet sea público.\n\n' + e.message);
+  }
+}
+
+function setLoader(show, text, pct) {
+  const el = document.getElementById('loader');
+  document.getElementById('loaderText').textContent = text;
+  document.getElementById('loaderFill').style.width = pct + '%';
+  if (!show) setTimeout(() => el.classList.add('hidden'), 400);
+  else el.classList.remove('hidden');
+}
+
+function parseCSV(text) {
+  const result = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
+  rawData = result.data.map(row => {
+    // Normalise column names (trim spaces)
+    const r = {};
+    Object.keys(row).forEach(k => { r[k.trim()] = typeof row[k] === 'string' ? row[k].trim() : row[k]; });
+
+    const fechaRaw = r['FECHA'] || '';
+    let fecha = null, mes = null, anio = null;
+    // Try parse: could be serial number (Excel) or date string
+    const serial = parseFloat(fechaRaw);
+    if (!isNaN(serial) && serial > 40000) {
+      // Excel date serial
+      fecha = new Date((serial - 25569) * 86400 * 1000);
+    } else if (fechaRaw) {
+      fecha = new Date(fechaRaw);
+    }
+    if (fecha && !isNaN(fecha)) {
+      mes = fecha.getMonth(); // 0-based
+      anio = fecha.getFullYear();
+    }
+
+    const valorCliente = num(r['VALOR DISPO (CLIENTE)']);
+    const cobroGo = num(r['COBRO GO']);
+    const costoQuicker = num(r['COSTO (QUICKER)']);
+    const valorEfectivo = valorCliente ?? cobroGo;
+
+    const rentHelp = (valorEfectivo != null && cobroGo != null) ? valorEfectivo - cobroGo : null;
+    const rentGo = (cobroGo != null && costoQuicker != null) ? cobroGo - costoQuicker : null;
+    const margenTotal = (rentHelp != null && rentGo != null) ? rentHelp + rentGo : (rentGo ?? rentHelp);
+
+    return {
+      proyecto: r['PROYECTO'] || '–',
+      fecha,
+      mes,
+      anio,
+      tipo: r['TIPO (CARRY - MOTO)'] || '–',
+      estado: r['CUBIERTO O NO CUBIERTO'] || '–',
+      valorCliente,
+      cobroGo,
+      costoQuicker,
+      ciudad: (r['CIUDAD'] || '–').toUpperCase(),
+      rentHelp,
+      rentGo,
+      margenTotal,
+    };
+  }).filter(r => r.fecha && r.mes !== null);
+}
+
+// ─── FILTERS ─────────────────────────────────────────────────────────────────
+function populateFilters() {
+  const sel = (id, vals) => {
+    const el = document.getElementById(id);
+    const cur = el.value;
+    el.innerHTML = '<option value="">Todos</option>' + vals.map(v => `<option value="${v}">${v}</option>`).join('');
+    if (vals.includes(cur)) el.value = cur;
+  };
+  const uniq = (arr) => [...new Set(arr)].filter(Boolean).sort();
+  const mesLabel = (m) => MES_NAMES[m] + ' ' + (rawData.find(r => r.mes===m)?.anio || '');
+  const meses = uniq(rawData.map(r => r.mes));
+
+  sel('fProyecto', uniq(rawData.map(r => r.proyecto)));
+  sel('fMes', meses.map(m => m));
+  // Custom labels for month
+  const fMes = document.getElementById('fMes');
+  fMes.innerHTML = '<option value="">Todos los meses</option>' + meses.map(m => `<option value="${m}">${mesLabel(m)}</option>`).join('');
+  sel('fCiudad', uniq(rawData.map(r => r.ciudad)));
+  sel('fTipo', uniq(rawData.map(r => r.tipo)));
+}
+
+function resetFilters() {
+  ['fProyecto','fMes','fCiudad','fTipo'].forEach(id => document.getElementById(id).value = '');
+  applyFilters();
+}
+
+function applyFilters() {
+  const proy = document.getElementById('fProyecto').value;
+  const mes = document.getElementById('fMes').value;
+  const ciudad = document.getElementById('fCiudad').value;
+  const tipo = document.getElementById('fTipo').value;
+
+  filteredData = rawData.filter(r =>
+    (!proy || r.proyecto === proy) &&
+    (mes === '' || r.mes == mes) &&
+    (!ciudad || r.ciudad === ciudad) &&
+    (!tipo || r.tipo === tipo)
+  );
+
+  const cancelados = filteredData.filter(isCancelado);
+  document.getElementById('filterInfo').textContent =
+    `${filteredData.length.toLocaleString()} servicios · ${cancelados.length} cancelados`;
+
+  renderAll();
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+function renderAll() {
+  renderKPIs();
+  renderMonthChart();
+  renderDonuts();
+  renderProyectoChart();
+  renderTipoChart();
+  renderCiudadBars();
+  renderRentChart();
+  renderCorrChart();
+  renderEstadoChart();
+  renderTPChart();
+  renderProyTable();
+  renderCiudadTable();
+  renderFindings();
+}
+
+// ─── KPIs ─────────────────────────────────────────────────────────────────────
+function renderKPIs() {
+  const all = filteredData;
+  const cancelados = all.filter(isCancelado);
+  const exitosos = all.filter(isExitoso);
+  const total = all.length;
+
+  const margenPerdido = cancelados.reduce((s,r) => s + (r.margenTotal||0), 0);
+  const perdidaHelp = cancelados.reduce((s,r) => s + (r.rentHelp||0), 0);
+  const perdidaGo = cancelados.reduce((s,r) => s + (r.rentGo||0), 0);
+  const margenGenerado = exitosos.reduce((s,r) => s + (r.margenTotal||0), 0);
+  const tasaCancel = total > 0 ? (cancelados.length/total*100).toFixed(1) : 0;
+  const promPerdido = cancelados.length > 0 ? margenPerdido/cancelados.length : 0;
+
+  const kpis = [
+    {lbl:'Total servicios', val: total.toLocaleString(), sub: `Filtrado actual`, color:'', accent:'var(--text-dim)'},
+    {lbl:'Cancelados (venta perdida)', val: cancelados.length.toLocaleString(), sub: `${tasaCancel}% tasa cancelación`, color:'c-red', accent:'var(--red)'},
+    {lbl:'Margen perdido total', val: fmtM(margenPerdido), sub: `${cancelados.length} servicios`, color:'c-red', accent:'var(--red)'},
+    {lbl:'Pérdida Quick Help', val: fmtM(perdidaHelp), sub: total>0?pct(perdidaHelp,margenPerdido)+' del perdido':'–', color:'c-orange', accent:'var(--orange)'},
+    {lbl:'Pérdida Quick Go', val: fmtM(perdidaGo), sub: total>0?pct(perdidaGo,margenPerdido)+' del perdido':'–', color:'c-amber', accent:'var(--amber)'},
+    {lbl:'Margen generado (exitosos)', val: fmtM(margenGenerado), sub:`${exitosos.length} servicios`, color:'c-green', accent:'var(--green)'},
+    {lbl:'Pérd. promedio / servicio', val: fmtK(promPerdido), sub:'Cancelados', color:'c-orange', accent:'var(--orange)'},
+    {lbl:'Servicios exitosos', val: exitosos.length.toLocaleString(), sub: total>0?pct(exitosos.length,total)+' del total':'–', color:'c-green', accent:'var(--green)'},
+  ];
+
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k => `
+    <div class="kpi">
+      <div class="kpi-accent" style="background:${k.accent};"></div>
+      <div class="kpi-lbl">${k.lbl}</div>
+      <div class="kpi-val ${k.color}">${k.val}</div>
+      <div class="kpi-chg">${k.sub}</div>
+    </div>`).join('');
+}
+
+// ─── MONTH CHART ─────────────────────────────────────────────────────────────
+function renderMonthChart() {
+  const cancelados = filteredData.filter(isCancelado);
+  const byMes = {};
+  cancelados.forEach(r => {
+    const k = `${r.anio}-${r.mes}`;
+    if (!byMes[k]) byMes[k] = { lbl: MES_NAMES[r.mes]+' '+r.anio, margen:0, count:0 };
+    byMes[k].margen += r.margenTotal||0;
+    byMes[k].count++;
+  });
+  const sorted = Object.values(byMes).sort((a,b) => a.lbl.localeCompare(b.lbl));
+  const labels = sorted.map(v=>v.lbl);
+  const data = sorted.map(v=>v.margen);
+  const maxV = Math.max(...data);
+  const colors = data.map(v => v===maxV ? '#e8453c' : v > maxV*0.5 ? '#f07830' : '#4a4a5a');
+
+  destroyChart('month');
+  const ctx = document.getElementById('monthChart').getContext('2d');
+  charts['month'] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:0, borderRadius:4, label:'Margen perdido' }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => fmtM(ctx.raw) } } },
+      scales: commonScales(v => fmtM(v))
+    }
+  });
+  const total = data.reduce((a,b)=>a+b,0);
+  document.getElementById('monthSub').textContent = `Total filtro: ${fmtM(total)} en ${cancelados.length} servicios`;
+}
+
+// ─── DONUTS ───────────────────────────────────────────────────────────────────
+function renderDonuts() {
+  // Exitosos
+  const exitosos = filteredData.filter(isExitoso);
+  const eHelp = exitosos.reduce((s,r)=>s+(r.rentHelp||0),0);
+  const eGo = exitosos.reduce((s,r)=>s+(r.rentGo||0),0);
+  destroyChart('donutExito');
+  charts['donutExito'] = new Chart(document.getElementById('donutExito').getContext('2d'), {
+    type:'doughnut',
+    data:{ labels:['Quick Help','Quick Go'], datasets:[{ data:[Math.max(eHelp,0),Math.max(eGo,0)], backgroundColor:['#4191ff','#2dca7e'], borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => { const t=eHelp+eGo; return ` ${fmtM(ctx.raw)} (${t?pct(ctx.raw,t):'–'})`; } } } } }
+  });
+
+  // Perdidos
+  const cancelados = filteredData.filter(isCancelado);
+  const pHelp = cancelados.reduce((s,r)=>s+(r.rentHelp||0),0);
+  const pGo = cancelados.reduce((s,r)=>s+(r.rentGo||0),0);
+  destroyChart('donutPerdido');
+  charts['donutPerdido'] = new Chart(document.getElementById('donutPerdido').getContext('2d'), {
+    type:'doughnut',
+    data:{ labels:['Quick Help','Quick Go'], datasets:[{ data:[Math.max(pHelp,0),Math.max(pGo,0)], backgroundColor:['#e8453c','#f07830'], borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => { const t=pHelp+pGo; return ` ${fmtM(ctx.raw)} (${t?pct(ctx.raw,t):'–'})`; } } } } }
+  });
+}
+
+// ─── PROYECTO CHART ───────────────────────────────────────────────────────────
+function renderProyectoChart() {
+  const cancelados = filteredData.filter(isCancelado);
+  const byProy = {};
+  cancelados.forEach(r => {
+    if(!byProy[r.proyecto]) byProy[r.proyecto]={margen:0,count:0};
+    byProy[r.proyecto].margen += r.margenTotal||0;
+    byProy[r.proyecto].count++;
+  });
+  const sorted = Object.entries(byProy).sort((a,b)=>b[1].margen-a[1].margen).slice(0,12);
+  destroyChart('proy');
+  charts['proy'] = new Chart(document.getElementById('proyChart').getContext('2d'), {
+    type:'bar', indexAxis:'y',
+    data:{ labels:sorted.map(v=>v[0]), datasets:[{ data:sorted.map(v=>v[1].margen), backgroundColor:'#e8453c', borderWidth:0, borderRadius:3, label:'Margen perdido' }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => fmtM(ctx.raw) + ` (${byProy[ctx.label]?.count||0} servicios)` } } },
+      scales:{
+        x:{ grid:{color:GRID}, ticks:{color:TICK,font:{size:10,family:'DM Mono'},callback:v=>fmtM(v)} },
+        y:{ grid:{color:'transparent'}, ticks:{color:TICK,font:{size:11,family:'DM Mono'}} }
+      }
+    }
+  });
+}
+
+// ─── TIPO CHART ───────────────────────────────────────────────────────────────
+function renderTipoChart() {
+  const cancelados = filteredData.filter(isCancelado);
+  const byTipo = {};
+  cancelados.forEach(r => {
+    if(!byTipo[r.tipo]) byTipo[r.tipo]={margen:0,count:0};
+    byTipo[r.tipo].margen += r.margenTotal||0;
+    byTipo[r.tipo].count++;
+  });
+  const entries = Object.entries(byTipo).sort((a,b)=>b[1].count-a[1].count);
+  const colors = ['#4191ff','#2dca7e','#f5be42','#e8453c','#9b72f5'];
+  destroyChart('tipo');
+  charts['tipo'] = new Chart(document.getElementById('tipoChart').getContext('2d'), {
+    type:'doughnut',
+    data:{ labels:entries.map(v=>v[0]), datasets:[{ data:entries.map(v=>v[1].count), backgroundColor:colors, borderWidth:0 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'50%',
+      plugins:{ legend:{ display:true, position:'right', labels:{color:TICK,font:{size:11,family:'DM Mono'},boxWidth:10,padding:10} }, tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.raw} cancelados · ${fmtM(byTipo[ctx.label]?.margen)}` } } } }
+  });
+}
+
+// ─── CIUDAD BARS ─────────────────────────────────────────────────────────────
+function renderCiudadBars() {
+  const cancelados = filteredData.filter(isCancelado);
+  const byCiudad = {};
+  cancelados.forEach(r => {
+    if(!byCiudad[r.ciudad]) byCiudad[r.ciudad]=0;
+    byCiudad[r.ciudad] += r.margenTotal||0;
+  });
+  const sorted = Object.entries(byCiudad).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const maxV = sorted[0]?.[1] || 1;
+  const colorFn = (v,i) => i===0?'var(--red)': i<3?'var(--orange)':'var(--text-dim)';
+  document.getElementById('ciudadBars').innerHTML = sorted.map(([c,v],i) => `
+    <div class="hbar-row">
+      <div class="hbar-lbl" title="${c}">${c}</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${(v/maxV*100).toFixed(1)}%;background:${colorFn(v,i)};"></div></div>
+      <div class="hbar-val">${fmtM(v)}</div>
+    </div>`).join('') || '<div class="empty">Sin datos</div>';
+}
+
+// ─── RENT CHART ───────────────────────────────────────────────────────────────
+function renderRentChart() {
+  const exitosos = filteredData.filter(isExitoso);
+  const byProy = {};
+  exitosos.forEach(r => {
+    if(!byProy[r.proyecto]) byProy[r.proyecto]={help:[],go:[]};
+    if(r.rentHelp!=null) byProy[r.proyecto].help.push(r.rentHelp);
+    if(r.rentGo!=null) byProy[r.proyecto].go.push(r.rentGo);
+  });
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+  const entries = Object.entries(byProy).map(([k,v])=>({label:k,help:avg(v.help),go:avg(v.go),total:avg(v.help)+avg(v.go)})).sort((a,b)=>b.total-a.total).slice(0,10);
+
+  destroyChart('rent');
+  charts['rent'] = new Chart(document.getElementById('rentChart').getContext('2d'), {
+    type:'bar',
+    data:{ labels:entries.map(v=>v.label), datasets:[
+      {label:'Rent Help',data:entries.map(v=>Math.round(v.help)),backgroundColor:'#4191ff',borderWidth:0,borderRadius:[3,3,0,0],stack:'s'},
+      {label:'Rent Go',data:entries.map(v=>Math.round(v.go)),backgroundColor:'#2dca7e',borderWidth:0,borderRadius:[3,3,0,0],stack:'s'}
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:true,labels:{color:TICK,font:{size:11,family:'DM Mono'},boxWidth:10,padding:12}}, tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmtK(ctx.raw)}`}} },
+      scales:{
+        x:{stacked:true, grid:{color:GRID}, ticks:{color:TICK,font:{size:9,family:'DM Mono'},maxRotation:40}},
+        y:{stacked:true, grid:{color:GRID}, ticks:{color:TICK,font:{size:10,family:'DM Mono'},callback:v=>fmtK(v)}}
+      }
+    }
+  });
+}
+
+// ─── CORR CHART ───────────────────────────────────────────────────────────────
+function renderCorrChart() {
+  const bins = [{lbl:'<50K',min:0,max:50000},{lbl:'50-80K',min:50000,max:80000},{lbl:'80-100K',min:80000,max:100000},{lbl:'100-130K',min:100000,max:130000},{lbl:'130-200K',min:130000,max:200000},{lbl:'>200K',min:200000,max:Infinity}];
+  const relevant = filteredData.filter(r => isCancelado(r)||isExitoso(r));
+  const bdata = bins.map(b => {
+    const inBin = relevant.filter(r => r.costoQuicker!=null && r.costoQuicker>=b.min && r.costoQuicker<b.max);
+    const cancel = inBin.filter(isCancelado).length;
+    return inBin.length ? (cancel/inBin.length*100) : null;
+  });
+  const colors = bdata.map(v => v==null?'#3e3d3a':v>25?'#e8453c':v>10?'#f07830':'#4a4a5a');
+  destroyChart('corr');
+  charts['corr'] = new Chart(document.getElementById('corrChart').getContext('2d'), {
+    type:'bar',
+    data:{ labels:bins.map(b=>b.lbl), datasets:[{data:bdata, backgroundColor:colors, borderWidth:0, borderRadius:4, label:'% cancelación'}] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ctx.raw!=null ? ` ${ctx.raw.toFixed(1)}% tasa cancelación` : 'Sin datos' } } },
+      scales:{ x:{grid:{color:GRID},ticks:{color:TICK,font:{size:11,family:'DM Mono'}}}, y:{grid:{color:GRID},ticks:{color:TICK,font:{size:11,family:'DM Mono'},callback:v=>v+'%'}} }
+    }
+  });
+}
+
+// ─── ESTADO CHART ─────────────────────────────────────────────────────────────
+function renderEstadoChart() {
+  const byEstado = {};
+  filteredData.forEach(r => { byEstado[r.estado]=(byEstado[r.estado]||0)+1; });
+  const entries = Object.entries(byEstado).sort((a,b)=>b[1]-a[1]);
+  const clrMap = {'Finalizado':'#2dca7e','Cancelado':'#e8453c','Cubierto directamente por la operación':'#4191ff','Cubierto':'#f5be42'};
+  destroyChart('estado');
+  charts['estado'] = new Chart(document.getElementById('estadoChart').getContext('2d'), {
+    type:'doughnut',
+    data:{ labels:entries.map(v=>v[0]), datasets:[{ data:entries.map(v=>v[1]), backgroundColor:entries.map(v=>clrMap[v[0]]||'#4a4a5a'), borderWidth:0 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'55%',
+      plugins:{ legend:{display:true,position:'right',labels:{color:TICK,font:{size:10,family:'DM Mono'},boxWidth:10,padding:8}}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw.toLocaleString()}`}} }
+    }
+  });
+}
+
+// ─── TRANSFER PRICING CHART ───────────────────────────────────────────────────
+function renderTPChart() {
+  const exitosos = filteredData.filter(isExitoso);
+  const byProy = {};
+  exitosos.forEach(r => {
+    if(!byProy[r.proyecto]) byProy[r.proyecto]=[];
+    if(r.rentHelp!=null) byProy[r.proyecto].push(r.rentHelp);
+  });
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+  const entries = Object.entries(byProy).map(([k,v])=>({label:k,avg:avg(v)})).sort((a,b)=>a.avg-b.avg);
+  const colors = entries.map(e => e.avg < 0 ? '#e8453c' : e.avg < 1000 ? '#f5be42' : '#4191ff');
+  destroyChart('tp');
+  charts['tp'] = new Chart(document.getElementById('tpChart').getContext('2d'), {
+    type:'bar',
+    data:{ labels:entries.map(v=>v.label), datasets:[{data:entries.map(v=>Math.round(v.avg)), backgroundColor:colors, borderWidth:0, borderRadius:4, label:'Rent Help promedio'}] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>` Rent Help prom: ${fmtK(ctx.raw)}`}} },
+      scales:{
+        x:{grid:{color:GRID},ticks:{color:TICK,font:{size:10,family:'DM Mono'},maxRotation:35}},
+        y:{grid:{color:GRID},ticks:{color:TICK,font:{size:11,family:'DM Mono'},callback:v=>fmtK(v)}}
+      }
+    }
+  });
+}
+
+// ─── TABLES ───────────────────────────────────────────────────────────────────
+function renderProyTable() {
+  const byProy = {};
+  filteredData.forEach(r => {
+    if(!byProy[r.proyecto]) byProy[r.proyecto]={total:0,cancel:0,mp:0,ph:0,pg:0,rh:[],rg:[]};
+    const p = byProy[r.proyecto];
+    p.total++;
+    if(isCancelado(r)){p.cancel++;p.mp+=r.margenTotal||0;p.ph+=r.rentHelp||0;p.pg+=r.rentGo||0;}
+    if(isExitoso(r)){if(r.rentHelp!=null)p.rh.push(r.rentHelp);if(r.rentGo!=null)p.rg.push(r.rentGo);}
+  });
+  const avg=arr=>arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;
+  const rows = Object.entries(byProy).sort((a,b)=>b[1].mp-a[1].mp);
+  document.getElementById('proyTableBody').innerHTML = rows.map(([p,v])=>`
+    <tr>
+      <td>${p}</td>
+      <td>${v.total.toLocaleString()}</td>
+      <td class="td-red">${v.cancel.toLocaleString()}</td>
+      <td class="${v.cancel/v.total>0.15?'td-red':v.cancel/v.total>0.05?'td-orange':'td-green'}">${pct(v.cancel,v.total)}</td>
+      <td class="td-red">${fmtM(v.mp)}</td>
+      <td class="td-orange">${fmtM(v.ph)}</td>
+      <td class="td-orange">${fmtM(v.pg)}</td>
+      <td class="${avg(v.rh)<0?'td-red':avg(v.rh)<1000?'td-orange':'td-blue'}">${avg(v.rh)!=null?fmtK(avg(v.rh)):'–'}</td>
+      <td class="td-green">${avg(v.rg)!=null?fmtK(avg(v.rg)):'–'}</td>
+    </tr>`).join('') || '<tr><td colspan="9" class="empty">Sin datos</td></tr>';
+}
+
+function renderCiudadTable() {
+  const byCiudad = {};
+  filteredData.forEach(r => {
+    if(!byCiudad[r.ciudad]) byCiudad[r.ciudad]={total:0,cancel:0,mp:0,ph:0,pg:0};
+    const c = byCiudad[r.ciudad];
+    c.total++;
+    if(isCancelado(r)){c.cancel++;c.mp+=r.margenTotal||0;c.ph+=r.rentHelp||0;c.pg+=r.rentGo||0;}
+  });
+  const rows = Object.entries(byCiudad).sort((a,b)=>b[1].mp-a[1].mp);
+  document.getElementById('ciudadTableBody').innerHTML = rows.map(([c,v])=>`
+    <tr>
+      <td>${c}</td>
+      <td>${v.total.toLocaleString()}</td>
+      <td class="td-red">${v.cancel.toLocaleString()}</td>
+      <td class="${v.cancel/v.total>0.15?'td-red':v.cancel/v.total>0.05?'td-orange':'td-green'}">${pct(v.cancel,v.total)}</td>
+      <td class="td-red">${fmtM(v.mp)}</td>
+      <td class="td-orange">${fmtM(v.ph)}</td>
+      <td class="td-orange">${fmtM(v.pg)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="empty">Sin datos</td></tr>';
+}
+
+// ─── FINDINGS ────────────────────────────────────────────────────────────────
+function renderFindings() {
+  const cancelados = filteredData.filter(isCancelado);
+  const exitosos = filteredData.filter(isExitoso);
+  const total = filteredData.length;
+  if(total===0){ document.getElementById('findingsGrid').innerHTML='<div class="finding"><div class="finding-n">–</div><div class="finding-body"><div class="finding-title">Sin datos para los filtros seleccionados.</div></div></div>'; return; }
+
+  const margenPerdido = cancelados.reduce((s,r)=>s+(r.margenTotal||0),0);
+  const perdidaHelp = cancelados.reduce((s,r)=>s+(r.rentHelp||0),0);
+  const tasaCancel = (cancelados.length/total*100).toFixed(1);
+
+  // Peor mes
+  const byMes={};
+  cancelados.forEach(r=>{const k=MES_NAMES[r.mes]+' '+r.anio;byMes[k]=(byMes[k]||0)+(r.margenTotal||0);});
+  const peorMes = Object.entries(byMes).sort((a,b)=>b[1]-a[1])[0];
+
+  // Peor ciudad
+  const byCiudad={};
+  cancelados.forEach(r=>{byCiudad[r.ciudad]=(byCiudad[r.ciudad]||0)+(r.margenTotal||0);});
+  const peorCiudad = Object.entries(byCiudad).sort((a,b)=>b[1]-a[1])[0];
+
+  // Peor proyecto
+  const byProy={};
+  cancelados.forEach(r=>{byProy[r.proyecto]=(byProy[r.proyecto]||0)+(r.margenTotal||0);});
+  const peorProy = Object.entries(byProy).sort((a,b)=>b[1]-a[1])[0];
+
+  // Costo quicker bajo = alta cancelación
+  const relevant = filteredData.filter(r=>isCancelado(r)||isExitoso(r));
+  const bajo = relevant.filter(r=>r.costoQuicker!=null&&r.costoQuicker<80000);
+  const tasaBajo = bajo.length>0?(bajo.filter(isCancelado).length/bajo.length*100).toFixed(1):0;
+  const alto = relevant.filter(r=>r.costoQuicker!=null&&r.costoQuicker>=100000);
+  const tasaAlto = alto.length>0?(alto.filter(isCancelado).length/alto.length*100).toFixed(1):0;
+
+  // Help margen = 0
+  const sinMarginHelp = exitosos.filter(r=>r.rentHelp!=null&&r.rentHelp<1000).length;
+  const pctSinMargin = pct(sinMarginHelp, exitosos.length);
+
+  const findings = [
+    {
+      n:'01',
+      title: peorMes ? `${peorMes[0]} concentra el mayor daño` : 'Concentración mensual',
+      text: peorMes
+        ? `El mes de <strong>${peorMes[0]}</strong> acumula <strong>${fmtM(peorMes[1])}</strong> en margen perdido. Los picos estacionales deben anticiparse con más capacidad de Quickers disponibles.`
+        : 'No hay suficientes datos para identificar el peor mes.',
+      badge:'danger'
+    },
+    {
+      n:'02',
+      title: 'Help absorbe la mayor parte del riesgo',
+      text: `Quick Help pierde <strong>${fmtM(perdidaHelp)}</strong> (${pct(perdidaHelp,margenPerdido)} del margen cancelado) pero en servicios exitosos su participación es menor. El transfer pricing está desalineado con el riesgo que asume Help.`,
+      badge:'danger'
+    },
+    {
+      n:'03',
+      title: 'Pagar más al Quicker reduce cancelaciones',
+      text: `Quickers con costo <$80K cancelan al <strong>${tasaBajo}%</strong>, mientras que los de >$100K cancelan al <strong>${tasaAlto}%</strong>. Subir el piso de remuneración es la palanca más directa para reducir venta perdida.`,
+      badge:'orange'
+    },
+    {
+      n:'04',
+      title: peorCiudad ? `${peorCiudad[0]} lidera las pérdidas geográficas` : 'Concentración geográfica',
+      text: peorCiudad
+        ? `<strong>${peorCiudad[0]}</strong> genera <strong>${fmtM(peorCiudad[1])}</strong> en margen perdido. Invertir en Quickers activos en esta ciudad tendría el mayor retorno inmediato.`
+        : 'Sin datos suficientes por ciudad.',
+      badge:'orange'
+    },
+    {
+      n:'05',
+      title: 'Transfer pricing: Help sin margen',
+      text: `<strong>${pctSinMargin}</strong> de los servicios exitosos (${sinMarginHelp}) tienen Rent Help ≈ $0. Proyectos como CAFAM COLABORATIVO y GRUPO ÉXITO transfieren todo el valor a Go, dejando a Help sin retorno por su operación.`,
+      badge:'green'
+    },
+    {
+      n:'06',
+      title: peorProy ? `${peorProy[0]}: mayor impacto en margen perdido` : 'Proyecto más crítico',
+      text: peorProy
+        ? `El proyecto <strong>${peorProy[0]}</strong> acumula <strong>${fmtM(peorProy[1])}</strong> en margen cancelado. Revisar la estructura contractual y la cobertura de Quickers en sus ciudades objetivo.`
+        : 'Sin datos de proyectos.',
+      badge:'green'
+    }
+  ];
+
+  const badgeMap = {danger:'badge-red',orange:'badge-orange',green:'badge-blue'};
+  const badgeTxt = {danger:'Crítico',orange:'Urgente',green:'Optimizar'};
+
+  document.getElementById('findingsGrid').innerHTML = findings.map(f=>`
+    <div class="finding">
+      <div class="finding-n">${f.n}</div>
+      <div class="finding-body">
+        <div class="finding-title">${f.title} <span class="badge ${badgeMap[f.badge]}">${badgeTxt[f.badge]}</span></div>
+        <div class="finding-text">${f.text}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
