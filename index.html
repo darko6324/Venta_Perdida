@@ -315,16 +315,25 @@ function parseCSV(text){
   raw = res.data.map(row=>{
     const r={};
     Object.keys(row).forEach(k=>{ r[k.trim()]=(row[k]||'').toString().trim(); });
-    // Parse date
+    // Parse date — formato fuente: dd/mm/yyyy
     let d=null,mes=null,anio=null;
     const raw_f=r['FECHA']||'';
     const serial=parseFloat(raw_f);
     if(!isNaN(serial)&&serial>40000){
+      // Excel serial date
       d=new Date((serial-25569)*86400000);
     } else if(raw_f){
-      d=new Date(raw_f);
-      if(isNaN(d)) d=new Date(raw_f.replace(/(\d{2})\/(\d{2})\/(\d{4})/,'$3-$2-$1'));
-      if(isNaN(d)) d=null;
+      // Intentar dd/mm/yyyy primero (formato colombiano)
+      const mDMY=raw_f.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if(mDMY){
+        // mDMY[1]=dia, mDMY[2]=mes, mDMY[3]=año
+        d=new Date(+mDMY[3], +mDMY[2]-1, +mDMY[1]);
+      } else {
+        // Fallback: intentar yyyy-mm-dd u otros formatos ISO
+        const mISO=raw_f.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+        if(mISO) d=new Date(+mISO[1], +mISO[2]-1, +mISO[3]);
+      }
+      if(!d||isNaN(d)) d=null;
     }
     if(d&&!isNaN(d)){ mes=d.getMonth(); anio=d.getFullYear(); }
     const vc=num(r['VALOR DISPO (CLIENTE)']), cg=num(r['COBRO GO']), cq=num(r['COSTO (QUICKER)']);
